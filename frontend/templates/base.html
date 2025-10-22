@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}UberEats — POC{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<nav class="navbar">
+  <a href="{{ url_for('home') }}">Accueil</a>
+
+  {% if session.user %}
+    <span class="muted">
+      Connecté : {{ session.user.username }} ({{ session.user.role }})
+    </span>
+    <div class="spacer"></div>
+
+    {% if session.user.role == 'CLIENT' %}
+      <a href="{{ url_for('client_restaurants') }}">Restaurants</a>
+      <a href="{{ url_for('client_cart') }}">🛒 Panier</a>
+      <a href="{{ url_for('client_orders') }}">📦 Mes commandes</a>
+
+    {% elif session.user.role == 'RESTAURANT' %}
+      <a href="{{ url_for('restaurant_dashboard') }}">Commandes reçues</a>
+
+    {% elif session.user.role == 'LIVREUR' %}
+      <a href="{{ url_for('livreur_dashboard') }}">Tableau de bord</a>
+      <a href="{{ url_for('livreur_annonces') }}">Annonces</a>
+      <a href="{{ url_for('livreur_mes_courses') }}">Mes courses</a>
+    {% endif %}
+
+    <a class="logout" href="{{ url_for('logout') }}">Déconnexion</a>
+
+  {% else %}
+    <div class="spacer"></div>
+    <a href="{{ url_for('login') }}">Connexion</a>
+  {% endif %}
+</nav>
+
+
+<main class="container">
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="alert">{{ messages[0] }}</div>
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</main>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Historique des commandes{% endblock %}
+{% block content %}
+<h1>Historique du restaurant {{ session.user.nom }}</h1>
+<table class="table">
+  <thead>
+    <tr><th>ID</th><th>Client</th><th>Total (€)</th><th>Statut</th><th>Date clôture</th></tr>
+  </thead>
+  <tbody>
+  {% for o in orders %}
+    <tr>
+      <td>{{ o.id_commande }}</td>
+      <td>{{ o.id_client }}</td>
+      <td>{{ '%.2f'|format(o.montant_total_client or 0) }}</td>
+      <td>{{ o.statut }}</td>
+      <td>{{ o.date_cloture or '-' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="5" class="muted">Aucune commande terminée.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

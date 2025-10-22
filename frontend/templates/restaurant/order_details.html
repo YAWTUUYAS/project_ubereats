@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Commande {{ order.id_commande }}{% endblock %}
+{% block content %}
+<h2>Commande {{ order.id_commande }}</h2>
+
+<p>
+  <b>Client :</b> {{ order.id_client }}<br>
+  <b>Zone :</b> {{ order.zone }}<br>
+  <b>Adresse :</b> {{ order.livraison_adresse }}<br>
+  <b>Statut :</b> {{ order.statut }}<br>
+  <b>Livreur assigné :</b> {{ order.id_livreur_assigne or '-' }}
+</p>
+
+<h4>Plats commandés</h4>
+<ul>
+  {% for l in lignes %}
+    <li>{{ l.nom }} × {{ l.quantite }} — {{ '%.2f'|format(l.quantite * l.prix_unitaire) }} €</li>
+  {% else %}
+    <li class="muted">Aucune ligne enregistrée.</li>
+  {% endfor %}
+</ul>
+
+<hr>
+
+{% if order.statut == 'CREEE' %}
+  <form method="post" action="{{ url_for('restaurant_publish', order_id=order.id_commande) }}">
+    <input name="remuneration" placeholder="Rémunération (ex: 8.50)" required>
+    <button class="btn btn-sm btn-outline-primary">Publier</button>
+  </form>
+{% endif %}
+
+{% if order.statut == 'ANONCEE' and interets %}
+  <h5>Livreurs intéressés</h5>
+  <ul>
+    {% for i in interets %}
+      <li>
+        Livre<strong> {{ i.id_livreur }}</strong> — ETA {{ i.temps_estime or '-' }} min
+        <form method="post" action="{{ url_for('restaurant_assign', order_id=order.id_commande) }}">
+          <input type="hidden" name="livreur_id" value="{{ i.id_livreur }}">
+          <button class="btn btn-sm btn-outline-success">Assigner</button>
+        </form>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% if order.statut in ['CREEE','ANONCEE','ASSIGNEE'] %}
+  <form method="post" action="{{ url_for('restaurant_cancel', order_id=order.id_commande) }}">
+    <input name="motif" placeholder="Motif d'annulation" required>
+    <button class="btn btn-sm btn-outline-danger">Annuler</button>
+  </form>
+{% endif %}
+
+<a href="{{ url_for('restaurant_dashboard') }}">← Retour</a>
+{% endblock %}

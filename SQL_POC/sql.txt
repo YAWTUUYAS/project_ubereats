@@ -1,0 +1,253 @@
+-- ===============================
+-- 🔁 Réinitialisation
+-- ===============================
+DROP DATABASE IF EXISTS ubereats;
+CREATE DATABASE IF NOT EXISTS ubereats
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE ubereats;
+
+-- ===============================
+-- 🧍 CLIENT : crée les commandes
+-- ===============================
+CREATE TABLE client (
+  id_client   VARCHAR(16) PRIMARY KEY,
+  nom         VARCHAR(200) NOT NULL,
+  adresse     VARCHAR(255),
+  telephone   VARCHAR(20),
+  email       VARCHAR(200),
+  username    VARCHAR(50) UNIQUE,
+  password    VARCHAR(255)   -- ⚠️ clair pour le POC
+);
+
+-- ===============================
+-- 🍽️ RESTAURANT : reçoit, publie et assigne les livreurs
+-- ===============================
+CREATE TABLE restaurant (
+  id_restaurant VARCHAR(16) PRIMARY KEY,
+  nom           VARCHAR(200) NOT NULL,
+  adresse       VARCHAR(255),
+  telephone     VARCHAR(20),
+  zone          VARCHAR(50),
+  username      VARCHAR(50) UNIQUE,
+  password      VARCHAR(255)
+);
+
+-- ===============================
+-- 🚴 LIVREUR : reçoit les annonces et livre
+-- ===============================
+CREATE TABLE livreur (
+  id_livreur   VARCHAR(16) PRIMARY KEY,
+  nom          VARCHAR(200) NOT NULL,
+  vehicule     ENUM('velo','scooter','voiture') NOT NULL,
+  zone         VARCHAR(50),
+  username     VARCHAR(50) UNIQUE,
+  password     VARCHAR(255),
+  INDEX idx_zone (zone)
+);
+
+-- ===============================
+-- 📦 COMMANDE : cœur du système
+-- ===============================
+CREATE TABLE commande (
+  id_commande        VARCHAR(16) PRIMARY KEY,
+  id_client          VARCHAR(16),
+  id_restaurant      VARCHAR(16),
+  id_livreur_assigne VARCHAR(16),
+  zone               VARCHAR(50),
+  livraison_adresse  VARCHAR(255) NOT NULL,
+  livraison_lat      DOUBLE,
+  livraison_lon      DOUBLE,
+  remuneration       DECIMAL(10,2) NOT NULL,
+  statut             ENUM('CREEE','ANONCEE','ASSIGNEE','EN_LIVRAISON','LIVREE','ANNULEE') NOT NULL,
+  date_creation      BIGINT NOT NULL,
+  date_publiee       BIGINT,
+  date_assignee      BIGINT,
+  date_cloture       BIGINT,
+  annule_par         ENUM('CLIENT','RESTAURANT') NULL,
+  motif_annulation   VARCHAR(255),
+  livree_par_livreur VARCHAR(16),
+  CONSTRAINT fk_cmd_client FOREIGN KEY (id_client) REFERENCES client(id_client)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  CONSTRAINT fk_cmd_rest FOREIGN KEY (id_restaurant) REFERENCES restaurant(id_restaurant)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  CONSTRAINT fk_cmd_liv FOREIGN KEY (id_livreur_assigne) REFERENCES livreur(id_livreur)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  CONSTRAINT fk_cmd_liv_livre FOREIGN KEY (livree_par_livreur) REFERENCES livreur(id_livreur)
+    ON UPDATE CASCADE ON DELETE SET NULL,
+  INDEX idx_cmd_zone (zone),
+  INDEX idx_cmd_statut (statut),
+  INDEX idx_cmd_rest (id_restaurant),
+  INDEX idx_cmd_client (id_client)
+);
+
+-- ===============================
+-- ❤️ INTERET : quand un livreur se propose
+-- ===============================
+CREATE TABLE interet (
+  id_commande   VARCHAR(16) NOT NULL,
+  id_livreur    VARCHAR(16) NOT NULL,
+  ts            BIGINT      NOT NULL,
+  temps_estime  INT,
+  commentaire   VARCHAR(255),
+  PRIMARY KEY (id_commande, id_livreur, ts),
+  CONSTRAINT fk_int_cmd FOREIGN KEY (id_commande) REFERENCES commande(id_commande)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_int_liv FOREIGN KEY (id_livreur) REFERENCES livreur(id_livreur)
+    ON UPDATE CASCADE ON DELETE RESTRICT,
+  INDEX idx_interet_cmd_ts (id_commande, ts)
+);
+
+-- ===============================
+-- 🧾 EVENEMENT : journal des actions (optionnel mais conseillé)
+-- ===============================
+CREATE TABLE commande_evenement (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  id_commande VARCHAR(16) NOT NULL,
+  ts BIGINT NOT NULL,
+  acteur_role ENUM('CLIENT','RESTAURANT','LIVREUR') NOT NULL,
+  acteur_id   VARCHAR(16),
+  type        ENUM('CREATION','PUBLICATION','INTERET','ASSIGNATION','DEPART_LIVRAISON','LIVRAISON','ANNULATION') NOT NULL,
+  details     VARCHAR(255),
+  INDEX (id_commande, ts),
+  CONSTRAINT fk_evt_cmd FOREIGN KEY (id_commande) REFERENCES commande(id_commande)
+    ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+-- ===============================
+-- 🌱 DONNÉES D'EXEMPLE
+-- ===============================
+
+-- Clients
+INSERT INTO client (id_client, nom, adresse, telephone, email, username, password) VALUES
+  ('clt_001','Carlos Client','25 rue Client, Paris','0600000000','carlos@example.com','carlos','secret'),
+  ('clt_002','Marie Client','5 av Client, Paris','0611111111','marie@example.com','marie','secret');
+
+-- Restaurants
+INSERT INTO restaurant (id_restaurant, nom, adresse, telephone, zone, username, password) VALUES
+  ('rest_001','Pizza Roma','10 rue Italie, Paris','0102030405','paris-1','roma','secret'),
+  ('rest_002','Sushi Zen','24 rue Tokyo, Paris','0104050607','paris-2','zen','secret');
+
+-- Livreurs
+INSERT INTO livreur (id_livreur, nom, vehicule, zone, username, password) VALUES
+  ('liv_001','Lina','velo','paris-1','lina','secret'),
+  ('liv_002','Yassine','scooter','paris-1','yassine','secret'),
+  ('liv_003','Marco','voiture','paris-2','marco','secret');
+
+-- Commandes
+INSERT INTO commande (
+  id_commande, id_client, id_restaurant, zone,
+  livraison_adresse, livraison_lat, livraison_lon,
+  remuneration, statut, date_creation
+) VALUES
+  ('cmd_0001','clt_001','rest_001','paris-1',
+   '25 rue de la Paix, Paris',48.870,2.332,8.50,'CREEE',UNIX_TIMESTAMP()),
+  ('cmd_0002','clt_002','rest_002','paris-2',
+   '14 bd Saint-Germain, Paris',48.854,2.343,9.20,'ANONCEE',UNIX_TIMESTAMP());
+
+-- Intérêts
+INSERT INTO interet (id_commande, id_livreur, ts, temps_estime, commentaire)
+VALUES
+  ('cmd_0002','liv_003',UNIX_TIMESTAMP(),12,'Trafic ok');
+
+-- Historique d'événements (facultatif)
+INSERT INTO commande_evenement (id_commande, ts, acteur_role, acteur_id, type, details)
+VALUES
+  ('cmd_0001', UNIX_TIMESTAMP(), 'CLIENT', 'clt_001', 'CREATION', 'Commande créée par Carlos'),
+  ('cmd_0002', UNIX_TIMESTAMP(), 'RESTAURANT', 'rest_002', 'PUBLICATION', 'Commande publiée pour Sushi Zen');
+  
+  -- === Menu d’un restaurant ===
+CREATE TABLE plat (
+  id_plat       VARCHAR(16) PRIMARY KEY,
+  id_restaurant VARCHAR(16) NOT NULL,
+  nom           VARCHAR(200) NOT NULL,
+  prix          DECIMAL(10,2) NOT NULL,
+  disponible    TINYINT(1) NOT NULL DEFAULT 1,
+  CONSTRAINT fk_plat_rest FOREIGN KEY (id_restaurant) REFERENCES restaurant(id_restaurant)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  INDEX idx_plat_rest (id_restaurant)
+);
+
+-- === Lignes d’une commande ===
+CREATE TABLE commande_ligne (
+  id_commande  VARCHAR(16) NOT NULL,
+  id_plat      VARCHAR(16) NOT NULL,
+  quantite     INT NOT NULL DEFAULT 1 CHECK (quantite > 0),
+  prix_unitaire DECIMAL(10,2) NOT NULL,
+  PRIMARY KEY (id_commande, id_plat),
+  CONSTRAINT fk_ligne_cmd FOREIGN KEY (id_commande) REFERENCES commande(id_commande)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_ligne_plat FOREIGN KEY (id_plat) REFERENCES plat(id_plat)
+    ON UPDATE CASCADE ON DELETE RESTRICT
+);
+
+-- (optionnel) données d’exemple
+INSERT INTO plat (id_plat,id_restaurant,nom,prix) VALUES
+('p_roma_margh','rest_001','Pizza Margherita',10.50),
+('p_roma_regina','rest_001','Pizza Regina',12.90),
+('p_zen_maki','rest_002','Maki saumon (8p)',7.90),
+('p_zen_bento','rest_002','Bento poulet',13.50);
+
+
+ALTER TABLE commande
+  ADD COLUMN montant_total_client DECIMAL(10,2) NULL AFTER remuneration;
+
+-- Trigger pour (re)calculer le total client à chaque modification de lignes
+DELIMITER //
+CREATE TRIGGER trg_ligne_ai AFTER INSERT ON commande_ligne
+FOR EACH ROW
+BEGIN
+  UPDATE commande c
+     JOIN (
+       SELECT id_commande, SUM(quantite * prix_unitaire) AS total
+       FROM commande_ligne
+       WHERE id_commande = NEW.id_commande
+       GROUP BY id_commande
+     ) t ON t.id_commande = c.id_commande
+     SET c.montant_total_client = t.total;
+END//
+CREATE TRIGGER trg_ligne_au AFTER UPDATE ON commande_ligne
+FOR EACH ROW
+BEGIN
+  UPDATE commande c
+     JOIN (
+       SELECT id_commande, SUM(quantite * prix_unitaire) AS total
+       FROM commande_ligne
+       WHERE id_commande = NEW.id_commande
+       GROUP BY id_commande
+     ) t ON t.id_commande = c.id_commande
+     SET c.montant_total_client = t.total;
+END//
+CREATE TRIGGER trg_ligne_ad AFTER DELETE ON commande_ligne
+FOR EACH ROW
+BEGIN
+  UPDATE commande c
+     LEFT JOIN (
+       SELECT id_commande, SUM(quantite * prix_unitaire) AS total
+       FROM commande_ligne
+       WHERE id_commande = OLD.id_commande
+       GROUP BY id_commande
+     ) t ON t.id_commande = c.id_commande
+     SET c.montant_total_client = COALESCE(t.total,0);
+END//
+DELIMITER ;
+
+ -- Contraintes pour n'autoriser qu'un seul intérêt par (commande, livreur)
+ALTER TABLE interet DROP PRIMARY KEY;
+
+-- L'ancienne PK (id_commande, id_livreur, ts) permettait des doublons.
+-- On passe la PK sur (id_commande, id_livreur) uniquement.
+ALTER TABLE interet
+  ADD PRIMARY KEY (id_commande, id_livreur);
+
+-- L'index chronologique n'est plus pertinent tel quel
+DROP INDEX idx_interet_cmd_ts ON interet;
+
+-- On peut garder un index simple par commande si on veut lister vite côté restaurant
+CREATE INDEX idx_interet_cmd ON interet (id_commande);
+  
+select * from livreur;
+select * from client;
+select * from restaurant;
+select * from interet;
+select * from commande;
+

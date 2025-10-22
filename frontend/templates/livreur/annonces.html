@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Annonces{% endblock %}
+{% block content %}
+<h2>Annonces — Zone {{ zone }}</h2>
+<ul>
+  {% for o in orders %}
+    <li>
+      {{ o.id_commande }} — {{ o.livraison_adresse }} — {{ '%.2f'|format(o.remuneration) }} €
+      <form method="post" action="{{ url_for('livreur_interet', order_id=o.id_commande) }}">
+        <button name="action" value="ajouter">Je suis intéressé</button>
+      </form>
+    </li>
+  {% else %}
+    <li>Aucune annonce disponible.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

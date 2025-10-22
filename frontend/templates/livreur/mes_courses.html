@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Mes Courses{% endblock %}
+{% block content %}
+<h2>Mes courses</h2>
+<ul>
+  {% for o in orders %}
+    <li>
+      {{ o.id_commande }} — {{ o.livraison_adresse }} — {{ o.statut }}
+      {% if o.statut == 'ASSIGNEE' %}
+        <form method="post" action="{{ url_for('livreur_demarrer', order_id=o.id_commande) }}">
+          <button>Démarrer la livraison</button>
+        </form>
+      {% elif o.statut == 'EN_LIVRAISON' %}
+        <form method="post" action="{{ url_for('livreur_terminer', order_id=o.id_commande) }}">
+          <button>Marquer comme livrée</button>
+        </form>
+      {% else %}
+        <span class="muted">Commande terminée</span>
+      {% endif %}
+    </li>
+  {% else %}
+    <li>Aucune commande assignée.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

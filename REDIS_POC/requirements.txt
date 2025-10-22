@@ -1,0 +1,8 @@
+# requirements for redis_poc
+
+mysql-connector-python==9.0.0
+
+Flask==3.0.3
+redis==5.0.7
+
+

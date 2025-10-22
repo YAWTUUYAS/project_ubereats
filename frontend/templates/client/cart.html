@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Panier{% endblock %}
+{% block content %}
+<h2>Panier</h2>
+
+<ul>
+  {% for it in panier %}
+    <li>{{ it.nom }} × {{ it.qty }} — {{ "%.2f"|format(it.pu) }} €</li>
+  {% else %}
+    <li>Panier vide.</li>
+  {% endfor %}
+</ul>
+
+{% if panier %}
+  {% set total = 0 %}
+  {% for it in panier %}
+    {% set total = total + (it.qty * it.pu) %}
+  {% endfor %}
+  <p><strong>Total estimé :</strong> {{ "%.2f"|format(total) }} €</p>
+{% endif %}
+
+<form method="post">
+  <div>
+    <label>Adresse de livraison</label><br>
+    <input name="adresse" required>
+  </div>
+  <div>
+    <label>Zone</label><br>
+    <input name="zone" placeholder="ex : paris-1" required>
+  </div>
+  <div>
+    <label>ID restaurant</label><br>
+    <input name="id_restaurant" placeholder="ex : rest_001" required>
+  </div>
+  <button type="submit">Valider la commande</button>
+</form>
+{% endblock %}

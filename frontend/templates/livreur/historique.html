@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Historique des livraisons{% endblock %}
+{% block content %}
+<h2>Historique des livraisons</h2>
+<table class="table">
+  <thead><tr><th>ID</th><th>Adresse</th><th>Statut</th><th>Date clôture</th></tr></thead>
+  <tbody>
+  {% for o in orders %}
+    <tr>
+      <td>{{ o.id_commande }}</td>
+      <td>{{ o.livraison_adresse }}</td>
+      <td>{{ o.statut }}</td>
+      <td>{{ o.date_cloture or '-' }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="4" class="muted">Aucune livraison terminée.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

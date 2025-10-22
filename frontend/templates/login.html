@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Connexion{% endblock %}
+{% block content %}
+<h2>Connexion</h2>
+<form method="post" class="login-form">
+  <label>Rôle</label>
+  <select name="role">
+    <option>CLIENT</option>
+    <option>RESTAURANT</option>
+    <option>LIVREUR</option>
+  </select>
+  <label>Nom d'utilisateur</label>
+  <input name="username" required>
+  <label>Mot de passe</label>
+  <input type="password" name="password" required>
+  <button>Se connecter</button>
+</form>
+{% endblock %}

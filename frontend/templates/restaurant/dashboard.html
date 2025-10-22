@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Espace Restaurant{% endblock %}
+{% block content %}
+<h1>Commandes du restaurant {{ session.user.nom }}</h1>
+
+<form method="get" class="filter mb-3">
+  <label>Filtrer par statut :</label>
+  <select name="statut" onchange="this.form.submit()">
+    <option value="">(Tous)</option>
+    {% for s in ['CREEE','ANONCEE','ASSIGNEE','EN_LIVRAISON','LIVREE','ANNULEE'] %}
+      <option value="{{s}}" {% if request.args.get('statut') == s %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+<table class="table">
+  <thead>
+    <tr>
+      <th>ID</th><th>Zone</th><th>Adresse</th><th>Total (€)</th>
+      <th>Statut</th><th>Livreur</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for o in orders %}
+    <tr>
+      <td>{{ o.id_commande }}</td>
+      <td>{{ o.zone }}</td>
+      <td>{{ o.livraison_adresse }}</td>
+      <td>{{ '%.2f'|format(o.montant_total_client or 0) }}</td>
+      <td>{{ o.statut }}</td>
+      <td>{{ o.id_livreur_assigne or '-' }}</td>
+      <td>
+        <a class="btn btn-outline-primary btn-sm"
+           href="{{ url_for('restaurant_order_details', order_id=o.id_commande) }}">
+           Détails
+        </a>
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="7" class="muted">Aucune commande pour le moment.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

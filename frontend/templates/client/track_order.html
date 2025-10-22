@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Suivi commande {{ order_id }}{% endblock %}
+{% block content %}
+<h2>Suivi commande {{ order_id }}</h2>
+<div id="status">Chargement…</div>
+<ul class="steps">
+  <li>CREEE</li><li>ANONCEE</li><li>ASSIGNEE</li>
+  <li>EN_LIVRAISON</li><li>LIVREE</li><li>ANNULEE</li>
+</ul>
+{% endblock %}
+{% block scripts %}
+<script>
+async function poll(){
+  try {
+    const r = await fetch(`/orders/{{ order_id }}`);
+    const o = await r.json();
+    document.getElementById('status').innerText = 'Statut : ' + o.statut;
+  }catch(e){console.error(e);}
+  setTimeout(poll,2000);
+}
+poll();
+</script>
+{% endblock %}

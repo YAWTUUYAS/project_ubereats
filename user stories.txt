@@ -1,0 +1,5 @@
+user stories:
+
+-le client souhaite creer une commande destinée a un restaurant.
+-le client souhaite choisir quoi commander depuis l'acceuil.
+-

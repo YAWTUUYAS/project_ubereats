@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Menu — {{ restaurant.nom }}{% endblock %}
+{% block content %}
+<h2>{{ restaurant.nom }}</h2>
+<p>Zone : {{ restaurant.zone }}</p>
+
+<table>
+  <thead><tr><th>Plat</th><th>Prix</th><th>Qté</th><th></th></tr></thead>
+  <tbody>
+  {% for p in menu %}
+    <tr>
+      <td>{{ p.nom }}</td>
+      <td>{{ "%.2f"|format(p.prix) }} €</td>
+      <td>
+        <form method="post" action="{{ url_for('client_add_line') }}">
+          <input type="hidden" name="id_plat" value="{{ p.id_plat }}">
+          <input type="hidden" name="nom" value="{{ p.nom }}">
+          <input type="hidden" name="pu" value="{{ p.prix }}"> {# ⚠️ ta route lit 'pu' #}
+          <input type="number" name="qty" value="1" min="1" style="width:60px">
+          <button>Ajouter</button>
+        </form>
+      </td>
+      <td></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="4">Aucun plat disponible.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<p><a href="{{ url_for('client_cart') }}">Voir le panier</a></p>
+{% endblock %}
