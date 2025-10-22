@@ -1,10 +1,10 @@
-{"key": "user:CLIENT:clt_001", "user": {"id": "clt_001", "role": "CLIENT", "username": "carlos", "password": "secret"}}
-{"key": "user:CLIENT:clt_002", "user": {"id": "clt_002", "role": "CLIENT", "username": "marie", "password": "secret"}}
-{"key": "user:RESTAURANT:rest_001", "user": {"id": "rest_001", "role": "RESTAURANT", "username": "roma", "password": "secret"}}
-{"key": "user:RESTAURANT:rest_002", "user": {"id": "rest_002", "role": "RESTAURANT", "username": "zen", "password": "secret"}}
-{"key": "user:LIVREUR:liv_001", "user": {"id": "liv_001", "role": "LIVREUR", "username": "lina", "password": "secret"}}
-{"key": "user:LIVREUR:liv_002", "user": {"id": "liv_002", "role": "LIVREUR", "username": "yassine", "password": "secret"}}
-{"key": "user:LIVREUR:liv_003", "user": {"id": "liv_003", "role": "LIVREUR", "username": "marco", "password": "secret"}}
+{"key": "user:CLIENT:clt_001", "user": {"id": "clt_001", "role": "CLIENT", "username": "carlos", "password": "secret", "nom": "Carlos Client", "adresse": "25 rue Client, Paris", "telephone": "0600000000", "email": "carlos@example.com"}}
+{"key": "user:CLIENT:clt_002", "user": {"id": "clt_002", "role": "CLIENT", "username": "marie", "password": "secret", "nom": "Marie Client", "adresse": "5 av Client, Paris", "telephone": "0611111111", "email": "marie@example.com"}}
+{"key": "user:RESTAURANT:rest_001", "user": {"id": "rest_001", "role": "RESTAURANT", "username": "roma", "password": "secret", "nom": "Pizza Roma", "adresse": "10 rue Italie, Paris", "telephone": "0102030405", "zone": "paris-1"}}
+{"key": "user:RESTAURANT:rest_002", "user": {"id": "rest_002", "role": "RESTAURANT", "username": "zen", "password": "secret", "nom": "Sushi Zen", "adresse": "24 rue Tokyo, Paris", "telephone": "0104050607", "zone": "paris-2"}}
+{"key": "user:LIVREUR:liv_001", "user": {"id": "liv_001", "role": "LIVREUR", "username": "lina", "password": "secret", "nom": "Lina", "vehicule": "velo", "zone": "paris-1"}}
+{"key": "user:LIVREUR:liv_002", "user": {"id": "liv_002", "role": "LIVREUR", "username": "yassine", "password": "secret", "nom": "Yassine", "vehicule": "scooter", "zone": "paris-1"}}
+{"key": "user:LIVREUR:liv_003", "user": {"id": "liv_003", "role": "LIVREUR", "username": "marco", "password": "secret", "nom": "Marco", "vehicule": "voiture", "zone": "paris-2"}}
 {"key": "user:index:CLIENT", "mapping": {"carlos": "clt_001", "marie": "clt_002"}}
 {"key": "user:index:RESTAURANT", "mapping": {"roma": "rest_001", "zen": "rest_002"}}
 {"key": "user:index:LIVREUR", "mapping": {"lina": "liv_001", "yassine": "liv_002", "marco": "liv_003"}}

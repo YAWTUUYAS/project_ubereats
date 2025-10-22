@@ -26,7 +26,7 @@ MYSQL = dict(
     password="M13012005i",  # <-- mets ton mot de passe MySQL ici
     database="ubereats"
 )
-OUTDIR = "./out"            # répertoire de sortie
+OUTDIR = "./REDIS_POC/out"            # répertoire de sortie
 
 # ---------- helpers ----------
 def to_float(x):
@@ -216,46 +216,95 @@ def export_restaurants_menus(cnx, path):
 # ---------- USERS ----------
 def export_users(cnx, path):
     cur = cnx.cursor(dictionary=True)
-    cur.execute("SELECT id_client, username, password FROM client")
+
+    # Clients
+    cur.execute("SELECT id_client, nom, adresse, telephone, email, username, password FROM client")
     clients = cur.fetchall()
-    cur.execute("SELECT id_restaurant, username, password FROM restaurant")
+
+    # Restaurants
+    cur.execute("SELECT id_restaurant, nom, adresse, telephone, zone, username, password FROM restaurant")
     restos = cur.fetchall()
-    cur.execute("SELECT id_livreur, username, password FROM livreur")
+
+    # Livreurs
+    cur.execute("SELECT id_livreur, nom, vehicule, zone, username, password FROM livreur")
     livreurs = cur.fetchall()
-    # managers optionnels
+
+    # Managers (facultatif)
     managers = []
     try:
         cur.execute("SELECT id_manager, username, password FROM manager")
         managers = cur.fetchall()
     except mysql.connector.Error:
         pass
+
     cur.close()
 
     idx_client, idx_resto, idx_livreur, idx_manager = {}, {}, {}, {}
 
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
+        # ---- Clients ----
         for c in clients:
-            jwrite(f, {"key": f"user:CLIENT:{c['id_client']}",
-                       "user": {"id": c["id_client"], "role": "CLIENT", "username": c["username"], "password": c["password"]}})
+            user = {
+                "id": c["id_client"],
+                "role": "CLIENT",
+                "username": c["username"],
+                "password": c["password"],
+                "nom": c["nom"],
+                "adresse": c["adresse"],
+                "telephone": c["telephone"],
+                "email": c["email"],
+            }
+            jwrite(f, {"key": f"user:CLIENT:{c['id_client']}", "user": user})
             if c["username"]: idx_client[c["username"]] = c["id_client"]
+
+        # ---- Restaurants ----
         for r in restos:
-            jwrite(f, {"key": f"user:RESTAURANT:{r['id_restaurant']}",
-                       "user": {"id": r["id_restaurant"], "role": "RESTAURANT", "username": r["username"], "password": r["password"]}})
+            user = {
+                "id": r["id_restaurant"],
+                "role": "RESTAURANT",
+                "username": r["username"],
+                "password": r["password"],
+                "nom": r["nom"],
+                "adresse": r["adresse"],
+                "telephone": r["telephone"],
+                "zone": r["zone"],
+            }
+            jwrite(f, {"key": f"user:RESTAURANT:{r['id_restaurant']}", "user": user})
             if r["username"]: idx_resto[r["username"]] = r["id_restaurant"]
+
+        # ---- Livreurs ----
         for l in livreurs:
-            jwrite(f, {"key": f"user:LIVREUR:{l['id_livreur']}",
-                       "user": {"id": l["id_livreur"], "role": "LIVREUR", "username": l["username"], "password": l["password"]}})
+            user = {
+                "id": l["id_livreur"],
+                "role": "LIVREUR",
+                "username": l["username"],
+                "password": l["password"],
+                "nom": l["nom"],
+                "vehicule": l["vehicule"],
+                "zone": l["zone"],
+            }
+            jwrite(f, {"key": f"user:LIVREUR:{l['id_livreur']}", "user": user})
             if l["username"]: idx_livreur[l["username"]] = l["id_livreur"]
+
+        # ---- Managers ----
         for m in managers:
-            jwrite(f, {"key": f"user:MANAGER:{m['id_manager']}",
-                       "user": {"id": m["id_manager"], "role": "MANAGER", "username": m["username"], "password": m["password"]}})
+            user = {
+                "id": m["id_manager"],
+                "role": "MANAGER",
+                "username": m["username"],
+                "password": m["password"],
+            }
+            jwrite(f, {"key": f"user:MANAGER:{m['id_manager']}", "user": user})
             if m.get("username"): idx_manager[m["username"]] = m["id_manager"]
 
+        # ---- Index mappings ----
         if idx_client:  jwrite(f, {"key": "user:index:CLIENT",     "mapping": idx_client})
         if idx_resto:   jwrite(f, {"key": "user:index:RESTAURANT", "mapping": idx_resto})
         if idx_livreur: jwrite(f, {"key": "user:index:LIVREUR",    "mapping": idx_livreur})
         if idx_manager: jwrite(f, {"key": "user:index:MANAGER",    "mapping": idx_manager})
+
+    print(f"✅ Export utilisateurs enrichis → {path}")
 
 def main():
     try:
