@@ -1,36 +1,58 @@
 {% extends "base.html" %}
 {% block title %}Mes commandes{% endblock %}
 {% block content %}
-<h2>Mes commandes</h2>
-<table class="table">
-  <thead>
-    <tr>
-      <th>ID</th><th>Restaurant</th><th>Zone</th>
-      <th>Total (€)</th><th>Statut</th><th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for c in commandes %}
-    <tr>
-      <td>{{ c.id_commande }}</td>
-      <td>{{ c.id_restaurant }}</td>
-      <td>{{ c.zone }}</td>
-      <td>{{ '%.2f'|format(c.montant_total_client or 0) }}</td>
-      <td>{{ c.statut }}</td>
-      <td>
-        {% if c.statut in ['CREEE', 'ANONCEE'] %}
-          <form method="post" action="{{ url_for('client_cancel', order_id=c.id_commande) }}">
-            <input name="motif" placeholder="Motif (optionnel)">
-            <button class="btn btn-sm btn-outline-danger">Annuler</button>
-          </form>
-        {% else %}
-          <span class="muted">Non annulable</span>
-        {% endif %}
-      </td>
-    </tr>
+<div class="page-header">
+  <h2>📦 Mes commandes</h2>
+  <p class="muted">Suivez l'état de vos commandes</p>
+</div>
+
+<div class="orders-section">
+  {% if commandes %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Restaurant</th>
+          <th>Zone</th>
+          <th>Total (€)</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for c in commandes %}
+        <tr>
+          <td><strong>{{ c.id_commande }}</strong></td>
+          <td>{{ c.id_restaurant }}</td>
+          <td><span class="zone-badge">📍 {{ c.zone }}</span></td>
+          <td><strong>{{ '%.2f'|format(c.montant_total_client or 0) }} €</strong></td>
+          <td>
+            <span class="status-badge status-{{ c.statut }}">{{ c.statut }}</span>
+            {% if c.statut == 'ANNULEE' and c.motif_annulation %}
+              <div class="text-danger small">📝 {{ c.motif_annulation }}</div>
+            {% endif %}
+          </td>
+          
+          <td>
+            {% if c.statut in ['CREEE', 'ANONCEE'] %}
+              <form method="post" action="{{ url_for('client_cancel', order_id=c.id_commande) }}" class="cancel-form">
+                <input name="motif" placeholder="Motif (optionnel)" class="cancel-input">
+                <button type="submit" class="btn btn-sm btn-outline-danger">❌ Annuler</button>
+              </form>
+            {% else %}
+              <span class="muted">Non annulable</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
   {% else %}
-    <tr><td colspan="6">Aucune commande.</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+    <div class="empty-state">
+      <h3>📦 Aucune commande</h3>
+      <p class="muted">Vous n'avez pas encore passé de commande</p>
+      <a href="{{ url_for('client_restaurants') }}" class="btn btn-primary">Voir les restaurants</a>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}

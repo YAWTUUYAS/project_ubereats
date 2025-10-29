@@ -1,18 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Connexion{% endblock %}
 {% block content %}
-<h2>Connexion</h2>
-<form method="post" class="login-form">
-  <label>Rôle</label>
-  <select name="role">
-    <option>CLIENT</option>
-    <option>RESTAURANT</option>
-    <option>LIVREUR</option>
-  </select>
-  <label>Nom d'utilisateur</label>
-  <input name="username" required>
-  <label>Mot de passe</label>
-  <input type="password" name="password" required>
-  <button>Se connecter</button>
-</form>
+<div class="login-form">
+  <h2>🔐 Connexion</h2>
+  <form method="post">
+    <div class="form-group">
+      <label>Rôle</label>
+      <select name="role">
+        <option>CLIENT</option>
+        <option>RESTAURANT</option>
+        <option>LIVREUR</option>
+      </select>
+    </div>
+    
+    <div class="form-group">
+      <label>Nom d'utilisateur</label>
+      <input name="username" required placeholder="Entrez votre nom d'utilisateur">
+    </div>
+    
+    <div class="form-group">
+      <label>Mot de passe</label>
+      <input type="password" name="password" required placeholder="Entrez votre mot de passe">
+    </div>
+    
+    <button type="submit" class="btn btn-primary">Se connecter</button>
+  </form>
+</div>
 {% endblock %}

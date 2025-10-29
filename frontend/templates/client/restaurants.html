@@ -1,24 +1,40 @@
 {% extends "base.html" %}
 {% block title %}Restaurants{% endblock %}
 {% block content %}
-<h2>Restaurants disponibles</h2>
-<form method="get" class="mb-3">
-  <input name="q" value="{{ request.args.get('q','') }}" placeholder="Recherche (nom ou zone)…">
-  <button>Rechercher</button>
-</form>
+<div class="page-header">
+  <h2>🍽️ Restaurants disponibles</h2>
+  <p class="muted">Découvrez les restaurants de votre zone</p>
+</div>
 
-<ul>
+<div class="filter">
+  <form method="get">
+    <div class="search-container">
+      <input name="q" value="{{ request.args.get('q','') }}" placeholder="Rechercher un restaurant ou une zone..." class="search-input">
+      <button type="submit" class="btn btn-primary">🔍 Rechercher</button>
+    </div>
+  </form>
+</div>
+
+<div class="restaurants-grid">
   {% for r in restaurants %}
-    <li>
-      <a href="{{ url_for('client_restaurant_menu', restaurant_id=r.id_restaurant) }}">
-        {{ r.nom }}
-      </a>
-      <small> — zone :
-        <a href="{{ url_for('client_restaurants') }}?q={{ r.zone }}">{{ r.zone }}</a>
-      </small>
-    </li>
+    <div class="restaurant-card">
+      <div class="restaurant-info">
+        <h3>{{ r.nom }}</h3>
+        <div class="restaurant-meta">
+          <span class="zone-badge">📍 {{ r.zone }}</span>
+        </div>
+      </div>
+      <div class="restaurant-actions">
+        <a href="{{ url_for('client_restaurant_menu', restaurant_id=r.id_restaurant) }}" class="btn btn-primary">
+          Voir le menu
+        </a>
+      </div>
+    </div>
   {% else %}
-    <li>Aucun restaurant trouvé.</li>
+    <div class="empty-state">
+      <h3>😔 Aucun restaurant trouvé</h3>
+      <p class="muted">Essayez de modifier vos critères de recherche</p>
+    </div>
   {% endfor %}
-</ul>
+</div>
 {% endblock %}

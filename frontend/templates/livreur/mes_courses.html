@@ -1,25 +1,54 @@
 {% extends "base.html" %}
 {% block title %}Mes Courses{% endblock %}
 {% block content %}
-<h2>Mes courses</h2>
-<ul>
-  {% for o in orders %}
-    <li>
-      {{ o.id_commande }} — {{ o.livraison_adresse }} — {{ o.statut }}
-      {% if o.statut == 'ASSIGNEE' %}
-        <form method="post" action="{{ url_for('livreur_demarrer', order_id=o.id_commande) }}">
-          <button>Démarrer la livraison</button>
-        </form>
-      {% elif o.statut == 'EN_LIVRAISON' %}
-        <form method="post" action="{{ url_for('livreur_terminer', order_id=o.id_commande) }}">
-          <button>Marquer comme livrée</button>
-        </form>
-      {% else %}
-        <span class="muted">Commande terminée</span>
-      {% endif %}
-    </li>
+<div class="page-header">
+  <h2>📦 Mes courses</h2>
+  <p class="muted">Gérez vos livraisons en cours</p>
+</div>
+
+<div class="courses-section">
+  {% if orders %}
+    <div class="courses-grid">
+      {% for o in orders %}
+        <div class="course-card">
+          <div class="course-header">
+            <h3>Commande #{{ o.id_commande }}</h3>
+            <span class="status-badge status-{{ o.statut }}">{{ o.statut }}</span>
+          </div>
+          
+          <div class="course-details">
+            <div class="detail-item">
+              <span class="detail-label">📍 Adresse:</span>
+              <span class="detail-value">{{ o.livraison_adresse }}</span>
+            </div>
+          </div>
+          
+          <div class="course-actions">
+            {% if o.statut == 'ASSIGNEE' %}
+              <form method="post" action="{{ url_for('livreur_demarrer', order_id=o.id_commande) }}">
+                <button type="submit" class="btn btn-primary">
+                  🚀 Démarrer la livraison
+                </button>
+              </form>
+            {% elif o.statut == 'EN_LIVRAISON' %}
+              <form method="post" action="{{ url_for('livreur_terminer', order_id=o.id_commande) }}">
+                <button type="submit" class="btn btn-success">
+                  ✅ Marquer comme livrée
+                </button>
+              </form>
+            {% else %}
+              <span class="muted">Commande terminée</span>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
   {% else %}
-    <li>Aucune commande assignée.</li>
-  {% endfor %}
-</ul>
+    <div class="empty-state">
+      <h3>📦 Aucune commande assignée</h3>
+      <p class="muted">Vous n'avez actuellement aucune commande à livrer</p>
+      <a href="{{ url_for('livreur_annonces') }}" class="btn btn-primary">Voir les annonces</a>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}

@@ -1,11 +1,37 @@
 {% extends "base.html" %}
 {% block title %}Espace Livreur{% endblock %}
 {% block content %}
-<h2>Bienvenue, {{ session.user.nom }}</h2>
+<div class="page-header">
+  <h2>🚚 Bienvenue, {{ session.user.nom }}</h2>
+  <p class="muted">Gérez vos livraisons depuis votre tableau de bord</p>
+</div>
 
-<p>
-  <a class="btn btn-outline-primary" href="{{ url_for('livreur_annonces') }}">Annonces disponibles</a>
-  <a class="btn btn-outline-primary" href="{{ url_for('livreur_mes_courses') }}">Mes courses</a>
-  <a class="btn btn-outline-primary" href="{{ url_for('livreur_historique') }}">Historique</a>
-</p>
+<div class="dashboard-cards">
+  <div class="dashboard-card">
+    <div class="card-icon">📢</div>
+    <div class="card-content">
+      <h3>Annonces disponibles</h3>
+      <p class="muted">Consultez les nouvelles commandes à livrer</p>
+      <a href="{{ url_for('livreur_annonces') }}" class="btn btn-primary">Voir les annonces</a>
+    </div>
+  </div>
+  
+  <div class="dashboard-card">
+    <div class="card-icon">📦</div>
+    <div class="card-content">
+      <h3>Mes courses</h3>
+      <p class="muted">Gérez vos livraisons en cours</p>
+      <a href="{{ url_for('livreur_mes_courses') }}" class="btn btn-outline-primary">Mes courses</a>
+    </div>
+  </div>
+  
+  <div class="dashboard-card">
+    <div class="card-icon">📊</div>
+    <div class="card-content">
+      <h3>Historique</h3>
+      <p class="muted">Consultez vos livraisons terminées</p>
+      <a href="{{ url_for('livreur_historique') }}" class="btn btn-outline-primary">Voir l'historique</a>
+    </div>
+  </div>
+</div>
 {% endblock %}

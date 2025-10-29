@@ -1,32 +1,48 @@
 {% extends "base.html" %}
 {% block title %}Menu — {{ restaurant.nom }}{% endblock %}
 {% block content %}
-<h2>{{ restaurant.nom }}</h2>
-<p>Zone : {{ restaurant.zone }}</p>
+<div class="page-header">
+  <h2>🍽️ {{ restaurant.nom }}</h2>
+  <div class="restaurant-info">
+    <span class="zone-badge">📍 Zone : {{ restaurant.zone }}</span>
+  </div>
+</div>
 
-<table>
-  <thead><tr><th>Plat</th><th>Prix</th><th>Qté</th><th></th></tr></thead>
-  <tbody>
+<div class="menu-section">
+  <h3>📋 Menu</h3>
+  
   {% for p in menu %}
-    <tr>
-      <td>{{ p.nom }}</td>
-      <td>{{ "%.2f"|format(p.prix) }} €</td>
-      <td>
+    <div class="menu-item">
+      <div class="menu-item-info">
+        <h4>{{ p.nom }}</h4>
+        <p class="menu-price">{{ "%.2f"|format(p.prix) }} €</p>
+      </div>
+      <div class="menu-item-actions">
         <form method="post" action="{{ url_for('client_add_line') }}">
           <input type="hidden" name="id_plat" value="{{ p.id_plat }}">
           <input type="hidden" name="nom" value="{{ p.nom }}">
-          <input type="hidden" name="pu" value="{{ p.prix }}"> {# ⚠️ ta route lit 'pu' #}
-          <input type="number" name="qty" value="1" min="1" style="width:60px">
-          <button>Ajouter</button>
-        </form>
-      </td>
-      <td></td>
-    </tr>
-  {% else %}
-    <tr><td colspan="4">Aucun plat disponible.</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
+          <input type="hidden" name="pu" value="{{ p.prix }}">
+          <input type="hidden" name="id_restaurant" value="{{ restaurant.id_restaurant or restaurant.id }}">
 
-<p><a href="{{ url_for('client_cart') }}">Voir le panier</a></p>
+          <input type="hidden" name="restaurant_name" value="{{ restaurant.nom }}">
+          <div class="quantity-selector">
+            <input type="number" name="qty" value="1" min="1" max="10" class="quantity-input">
+            <button type="submit" class="btn btn-primary">➕ Ajouter</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <h3>😔 Aucun plat disponible</h3>
+      <p class="muted">Ce restaurant n'a pas encore de menu</p>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="cart-link">
+  <a href="{{ url_for('client_cart') }}" class="btn btn-outline-primary">
+    🛒 Voir le panier
+  </a>
+</div>
 {% endblock %}

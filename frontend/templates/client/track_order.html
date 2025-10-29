@@ -1,21 +1,53 @@
 {% extends "base.html" %}
 {% block title %}Suivi commande {{ order_id }}{% endblock %}
 {% block content %}
-<h2>Suivi commande {{ order_id }}</h2>
-<div id="status">Chargement…</div>
-<ul class="steps">
-  <li>CREEE</li><li>ANONCEE</li><li>ASSIGNEE</li>
-  <li>EN_LIVRAISON</li><li>LIVREE</li><li>ANNULEE</li>
-</ul>
+<div class="page-header">
+  <h2>🚚 Suivi commande {{ order_id }}</h2>
+  <p class="muted">Suivez votre commande en temps réel</p>
+</div>
+
+<div class="tracking-section">
+  <div class="status-display">
+    <div id="status" class="current-status">Chargement…</div>
+  </div>
+  
+  <div class="tracking-steps">
+    <ul class="steps">
+      <li id="step-CREEE">CREEE</li>
+      <li id="step-ANONCEE">ANONCEE</li>
+      <li id="step-ASSIGNEE">ASSIGNEE</li>
+      <li id="step-EN_LIVRAISON">EN_LIVRAISON</li>
+      <li id="step-LIVREE">LIVREE</li>
+      <li id="step-ANNULEE">ANNULEE</li>
+    </ul>
+  </div>
+</div>
+
+<div class="tracking-info">
+  <p class="muted">Cette page se met à jour automatiquement toutes les 2 secondes</p>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
 async function poll(){
   try {
-    const r = await fetch(`/orders/{{ order_id }}`);
+    const r = await fetch(`/orders/{{ order_id }}/json`);
     const o = await r.json();
     document.getElementById('status').innerText = 'Statut : ' + o.statut;
-  }catch(e){console.error(e);}
+    
+    // Update step highlighting
+    document.querySelectorAll('.steps li').forEach(step => {
+      step.classList.remove('active');
+    });
+    
+    const currentStep = document.getElementById('step-' + o.statut);
+    if (currentStep) {
+      currentStep.classList.add('active');
+    }
+  }catch(e){
+    console.error(e);
+    document.getElementById('status').innerText = 'Erreur de connexion';
+  }
   setTimeout(poll,2000);
 }
 poll();

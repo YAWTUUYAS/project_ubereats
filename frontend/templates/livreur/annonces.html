@@ -1,17 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Annonces{% endblock %}
 {% block content %}
-<h2>Annonces — Zone {{ zone }}</h2>
-<ul>
-  {% for o in orders %}
-    <li>
-      {{ o.id_commande }} — {{ o.livraison_adresse }} — {{ '%.2f'|format(o.remuneration) }} €
-      <form method="post" action="{{ url_for('livreur_interet', order_id=o.id_commande) }}">
-        <button name="action" value="ajouter">Je suis intéressé</button>
-      </form>
-    </li>
+<div class="page-header">
+  <h2>📢 Annonces — Zone {{ zone }}</h2>
+  <p class="muted">Nouvelles commandes disponibles pour livraison</p>
+</div>
+
+<div class="annonces-section">
+  {% if orders %}
+    <div class="annonces-grid">
+      {% for o in orders %}
+        <div class="annonce-card">
+          <div class="annonce-header">
+            <h3>Commande #{{ o.id_commande }}</h3>
+            <span class="remuneration-badge">💰 {{ '%.2f'|format(o.remuneration) }} €</span>
+          </div>
+          
+          <div class="annonce-details">
+            <div class="detail-item">
+              <span class="detail-label">📍 Adresse:</span>
+              <span class="detail-value">{{ o.livraison_adresse }}</span>
+            </div>
+          </div>
+          
+          <div class="annonce-actions">
+            <form method="post" action="{{ url_for('livreur_interet', order_id=o.id_commande) }}">
+              <button name="action" value="ajouter" class="btn btn-success">
+                ✋ Je suis intéressé
+              </button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
   {% else %}
-    <li>Aucune annonce disponible.</li>
-  {% endfor %}
-</ul>
+    <div class="empty-state">
+      <h3>😔 Aucune annonce disponible</h3>
+      <p class="muted">Il n'y a actuellement aucune commande à livrer dans votre zone</p>
+    </div>
+  {% endif %}
+</div>
 {% endblock %}

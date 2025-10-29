@@ -1,11 +1,50 @@
 {% extends "base.html" %}
 {% block title %}Accueil{% endblock %}
 {% block content %}
-<h1>Bienvenue sur UberEats POC</h1>
-<p class="muted">Choisissez votre rôle et connectez-vous pour tester l’application.</p>
-<ul>
-  <li>Client : <code>carlos / secret</code></li>
-  <li>Restaurant : <code>roma / secret</code></li>
-  <li>Livreur : <code>lina / secret</code></li>
-</ul>
+<div class="hero-section">
+  <h1>🍽️ Bienvenue sur UberEats POC</h1>
+  <p class="hero-subtitle">Plateforme de livraison de repas moderne et intuitive</p>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2>🔐 Comptes de test</h2>
+    <p class="muted">Choisissez votre rôle et connectez-vous pour tester l'application.</p>
+  </div>
+  
+  <div class="login-cards">
+    <div class="login-card">
+      <div class="login-card-header">
+        <h3>👤 Client</h3>
+        <span class="role-badge">Consommateur</span>
+      </div>
+      <div class="credentials">
+        <p><strong>Nom d'utilisateur:</strong> <code>carlos</code></p>
+        <p><strong>Mot de passe:</strong> <code>secret</code></p>
+      </div>
+    </div>
+    
+    <div class="login-card">
+      <div class="login-card-header">
+        <h3>🏪 Restaurant</h3>
+        <span class="role-badge">Vendeur</span>
+      </div>
+      <div class="credentials">
+        <p><strong>Nom d'utilisateur:</strong> <code>roma</code></p>
+        <p><strong>Mot de passe:</strong> <code>secret</code></p>
+      </div>
+    </div>
+    
+    <div class="login-card">
+      <div class="login-card-header">
+        <h3>🚚 Livreur</h3>
+        <span class="role-badge">Livreur</span>
+      </div>
+      <div class="credentials">
+        <p><strong>Nom d'utilisateur:</strong> <code>lina</code></p>
+        <p><strong>Mot de passe:</strong> <code>secret</code></p>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
