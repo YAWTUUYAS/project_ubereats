@@ -1,30 +1,42 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Benchmark avancé UberEats POC
+- Compare MySQL / Redis / MongoDB
+- Mesure temps moyen, écart-type, débit (RPS)
+- Exécute des requêtes simultanées (multi-threads)
+- Sauvegarde résultats dans benchmark_results.csv
+"""
+
 import requests
 import time
 import csv
 import statistics
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# === CONFIGURATION DES SERVEURS ET ENDPOINTS ===
+# === CONFIGURATION DES SERVEURS ===
 POC_CONFIG = {
     "MySQL": {
         "base": "http://127.0.0.1:5000",
         "create": "/client/cart",
-        "read": "/client/orders"  # selon app.py
+        "read": "/client/orders"
     },
     "Redis": {
         "base": "http://127.0.0.1:5001",
         "create": "/client/cart",
-        "read": "/client/orders"  # selon redis_poc.py
+        "read": "/client/orders"
     },
     "MongoDB": {
         "base": "http://127.0.0.1:5002",
         "create": "/client/cart",
-        "read": "/client/orders"  # selon mongo_poc.py
+        "read": "/client/orders"
     },
 }
 
 # === PARAMÈTRES DU TEST ===
-N = 200  # nombre de requêtes lecture/écriture
+N = 200              # nombre total de requêtes lecture/écriture
+THREADS = 20         # nombre de threads simultanés
 RESULTS_FILE = "benchmark_results.csv"
 
 SAMPLE_ORDER = {
@@ -36,99 +48,102 @@ SAMPLE_ORDER = {
     "montant_total_client": 12.5,
 }
 
-
 # === OUTILS ===
 def measure_request(url, method="GET", json=None):
-    """Mesure la durée (en ms) d'une requête HTTP."""
+    """Mesure la durée d’une requête HTTP (ms)."""
     start = time.perf_counter()
     try:
         if method == "POST":
-            response = requests.post(url, json=json)
+            r = requests.post(url, json=json, timeout=5)
         else:
-            response = requests.get(url)
+            r = requests.get(url, timeout=5)
         latency = (time.perf_counter() - start) * 1000
-        return latency, response.status_code
-    except requests.exceptions.ConnectionError:
-        print(f"❌ Impossible de se connecter à {url}")
-        return 0, 0
+        return latency, r.status_code
+    except requests.exceptions.RequestException:
+        return None, 0
+
+
+def run_parallel_requests(url, method="GET", json=None, n=100):
+    """Exécute des requêtes simultanées et retourne la liste des latences."""
+    latencies = []
+    with ThreadPoolExecutor(max_workers=THREADS) as executor:
+        futures = []
+        for i in range(n):
+            data = None
+            if json:
+                data = dict(json)
+                data["id"] = f"cmd_{i:05d}"
+            futures.append(executor.submit(measure_request, url, method, data))
+
+        for future in as_completed(futures):
+            latency, status = future.result()
+            if latency is not None and status == 200:
+                latencies.append(latency)
+    return latencies
 
 
 def benchmark_backend(name, config):
-    """Exécute un benchmark complet sur un backend donné."""
-    base_url = config["base"]
-    create_url = base_url + config["create"]
-    read_url = base_url + config["read"]
+    """Benchmark complet lecture/écriture pour un backend donné."""
+    base = config["base"]
+    create_url = base + config["create"]
+    read_url = base + config["read"]
 
-    read_latencies = []
-    write_latencies = []
+    print(f"\n🚀 Benchmark {name} ({base})")
 
-    print(f"\n🚀 Benchmark {name} ({base_url})")
+    # --- ÉCRITURES ---
+    write_latencies = run_parallel_requests(create_url, "POST", SAMPLE_ORDER, N)
 
-    # --- TESTS D'ÉCRITURE ---
-    for i in range(N):
-        order = SAMPLE_ORDER.copy()
-        order["id"] = f"cmd_{i:04d}"
-        latency, status = measure_request(create_url, method="POST", json=order)
-        if status == 200:
-            write_latencies.append(latency)
-        else:
-            print(f"⚠️ POST erreur {status} sur {create_url}")
-        time.sleep(0.005)
+    # --- LECTURES ---
+    read_latencies = run_parallel_requests(read_url, "GET", None, N)
 
-    # --- TESTS DE LECTURE ---
-    for i in range(N):
-        latency, status = measure_request(read_url)
-        if status == 200:
-            read_latencies.append(latency)
-        else:
-            print(f"⚠️ GET erreur {status} sur {read_url}")
-        time.sleep(0.005)
-
-    # --- CALCULS ---
     if not write_latencies or not read_latencies:
-        print(f"❌ Pas assez de données valides pour {name}")
+        print(f"❌ Aucune donnée valide pour {name}")
         return None
 
-    mean_write = statistics.mean(write_latencies)
-    mean_read = statistics.mean(read_latencies)
-    throughput = N / ((sum(write_latencies) + sum(read_latencies)) / 1000)
+    write_mean = statistics.mean(write_latencies)
+    write_std = statistics.pstdev(write_latencies)
+    read_mean = statistics.mean(read_latencies)
+    read_std = statistics.pstdev(read_latencies)
 
-    print(f"  ↳ Écriture : {mean_write:.2f} ms")
-    print(f"  ↳ Lecture  : {mean_read:.2f} ms")
+    total_time_s = (sum(write_latencies) + sum(read_latencies)) / 1000
+    throughput = (2 * N) / total_time_s
+
+    print(f"  ↳ Écriture : {write_mean:.2f} ms (σ={write_std:.2f})")
+    print(f"  ↳ Lecture  : {read_mean:.2f} ms (σ={read_std:.2f})")
     print(f"  ↳ Débit    : {throughput:.0f} req/s")
 
-    # --- SAUVEGARDE CSV ---
+    # --- SAUVEGARDE ---
     with open(RESULTS_FILE, "a", newline="") as f:
         writer = csv.writer(f)
         writer.writerow([
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             name,
-            round(mean_read, 2),
-            round(mean_write, 2),
-            round(throughput, 0),
+            round(read_mean, 2),
+            round(read_std, 2),
+            round(write_mean, 2),
+            round(write_std, 2),
+            round(throughput, 1),
             N
         ])
 
-    return mean_read, mean_write, throughput
+    return read_mean, write_mean, throughput
 
 
 # === SCRIPT PRINCIPAL ===
 if __name__ == "__main__":
-    print("=== Benchmark comparatif POC UberEats ===")
-    print(f"(Chaque test : {N} lectures et {N} écritures)\n")
+    print("=== Benchmark avancé POC UberEats ===")
+    print(f"(Tests : {N} lectures/écritures simultanées avec {THREADS} threads)\n")
 
-    # En-tête du fichier CSV
+    # Init CSV
     with open(RESULTS_FILE, "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["timestamp", "backend", "read_ms", "write_ms", "throughput_rps", "n_ops"])
+        writer.writerow(["timestamp", "backend", "read_mean", "read_std", "write_mean", "write_std", "throughput_rps", "n_ops"])
 
     results = {}
-
     for name, cfg in POC_CONFIG.items():
         try:
             results[name] = benchmark_backend(name, cfg)
         except Exception as e:
             print(f"❌ Erreur avec {name} : {e}")
 
-    print("\n✅ Benchmark terminé. Résultats enregistrés dans benchmark_results.csv")
-
+    print("\n✅ Benchmark terminé — résultats enregistrés dans benchmark_results.csv")
