@@ -412,7 +412,17 @@ def client_cart():
             return redirect(url_for("client_cart"))
 
         oid = new_order_id()
-        total = round(sum(p["pu"] * p["qty"] for p in panier), 2)
+        total_front = request.form.get("montant_total_client")
+        if total_front:
+            try:
+                total = float(total_front)
+            except ValueError:
+                total = round(sum(p["pu"] * p["qty"] for p in panier), 2)
+        else:
+            total = round(sum(p["pu"] * p["qty"] for p in panier), 2)
+
+    
+
         o = {
             "id": oid,
             "version": 1,
@@ -537,12 +547,13 @@ def restaurant_dashboard():
 @require_login
 @role_required("RESTAURANT")
 def restaurant_order_details(order_id):
+    """Détails complets d'une commande (vue restaurant)"""
     o = load_json(k_order(order_id))
     if not o:
         flash("Commande introuvable.")
         return redirect(url_for("restaurant_dashboard"))
 
-    # ✅ Normalize keys for template compatibility
+    # Normalisation pour compatibilité front
     if "id_commande" not in o and "id" in o:
         o["id_commande"] = o["id"]
     if "livraison_adresse" not in o and "livraison" in o:
@@ -557,13 +568,32 @@ def restaurant_order_details(order_id):
     lignes = o.get("lignes", [])
     interets = load_json(f"interets:{order_id}") or []
 
+    # --- Calculs totaux pour affichage identique à app.py ---
+    sous_total = 0.0
     for l in lignes:
         if "quantite" not in l and "qty" in l:
             l["quantite"] = l["qty"]
         if "prix_unitaire" not in l and "pu" in l:
             l["prix_unitaire"] = l["pu"]
+        try:
+            sous_total += float(l["prix_unitaire"]) * int(l["quantite"])
+        except (ValueError, TypeError):
+            pass
 
-    return render_template("restaurant/order_details.html", order=o, lignes=lignes, interets=interets)
+    sous_total = round(sous_total, 2)
+    total_client = round(float(o.get("montant_total_client", sous_total)), 2)
+
+    sous_total_str = f"{sous_total:.2f}"
+    total_client_str = f"{total_client:.2f}"
+
+    return render_template(
+        "restaurant/order_details.html",
+        order=o,
+        lignes=lignes,
+        interets=interets,
+        sous_total_str=sous_total_str,
+        total_client_str=total_client_str
+    )
 
 @app.post("/restaurant/order/<string:order_id>/publish")
 @require_login

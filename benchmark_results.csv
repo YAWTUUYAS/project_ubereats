@@ -1,0 +1,4 @@
+timestamp,backend,read_ms,write_ms,throughput_rps,n_ops
+2025-10-31 22:48:31,MySQL,3.08,3.12,161.0,200
+2025-10-31 22:48:35,Redis,2.58,2.59,194.0,200
+2025-10-31 22:48:38,MongoDB,2.61,2.73,187.0,200

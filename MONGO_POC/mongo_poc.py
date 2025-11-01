@@ -319,11 +319,13 @@ def client_cart():
     if request.method == "POST":
         action = (request.form.get("action") or "").strip().lower()
 
+        # --- Vider le panier ---
         if action == "clear":
             db.carts.update_one({"user_id": user_id}, {"$set": {"items": []}}, upsert=True)
             flash("Panier vidé avec succès", "success")
             return redirect(url_for("client_cart"))
 
+        # --- Mettre à jour le panier ---
         elif action == "update":
             cart_data = request.form.get("cart_data")
             try:
@@ -353,13 +355,16 @@ def client_cart():
                         "id_restaurant": (panier[0].get("id_restaurant") if panier else None),
                         "restaurant_name": (panier[0].get("restaurant_name") if panier else None),
                     })
+
             db.carts.update_one({"user_id": user_id}, {"$set": {"items": new_panier}}, upsert=True)
             flash("Panier mis à jour avec succès", "success")
             return redirect(url_for("client_cart"))
 
-        # Else: Create order (same logic / validations)
-        adresse = (request.form.get("adresse") or "").strip()
-        zone = (request.form.get("zone") or "").strip()
+        # --- Création de commande ---
+        # (on accepte aussi les champs cachés final-* si présents)
+        adresse = (request.form.get("adresse") or request.form.get("final-address") or "").strip()
+        zone = (request.form.get("zone") or request.form.get("final-zone") or "").strip()
+
         if not adresse or not zone:
             flash("Adresse et zone requis.")
             return redirect(url_for("client_cart"))
@@ -367,7 +372,7 @@ def client_cart():
             flash("Votre panier est vide.")
             return redirect(url_for("client_cart"))
 
-        # Restaurant from cart
+        # Trouver le restaurant (depuis les items du panier)
         restaurant_id = None
         restaurant_name = None
         for it in panier:
@@ -376,18 +381,37 @@ def client_cart():
                 restaurant_name = it.get("restaurant_name", "Restaurant")
                 break
         if not restaurant_id and panier:
-            # As fallback: try find in menus
+            # Fallback: tentative par menus
             m = db.menus.find_one({"menu.nom": panier[0].get("nom")}, {"restaurant.id": 1, "restaurant.nom": 1})
             if m and m.get("restaurant"):
                 restaurant_id = m["restaurant"]["id"]
                 restaurant_name = m["restaurant"]["nom"]
-
         if not restaurant_id:
             flash("Impossible de déterminer le restaurant. Veuillez réessayer.")
             return redirect(url_for("client_cart"))
 
+        # --- TOTAL CLIENT (frais inclus) ---
+        montant_total_front = (request.form.get("montant_total_client") or "").strip()
+        total = None
+        if montant_total_front:
+            try:
+                total = float(montant_total_front.replace(",", "."))
+            except ValueError:
+                total = None
+
+        if total is None:
+            sous_total = round(sum(float(p["pu"]) * int(p["qty"]) for p in panier), 2)
+            zone_fees = {
+                "paris-1": 2.5,
+                "paris-2": 2.5,
+                "paris-3": 3.0,
+                "paris-4": 3.0,
+                "paris-centre": 2.0,
+            }
+            frais = zone_fees.get(zone.lower(), 0.0)
+            total = round(sous_total + frais, 2)
+
         oid = new_order_id()
-        total = round(sum(p["pu"] * p["qty"] for p in panier), 2)
         order = {
             "id": oid,
             "version": 1,
@@ -401,7 +425,7 @@ def client_cart():
             "livreur_assigne_nom": None,
             "livree_par": None,
             "remuneration": 0.0,
-            "montant_total_client": total,
+            "montant_total_client": total,  # ✅ frais inclus
             "lignes": panier,
             "annule_par": None,
             "motif_annulation": None,
@@ -414,14 +438,20 @@ def client_cart():
                 "ts": now()
             }]
         }
+        # Schéma attendu par le reste du code : doc { key, order: {...} }
         db.orders.insert_one({"key": f"order:{oid}", "order": order})
-        # clear cart
+
+        # Nettoyer le panier
         db.carts.update_one({"user_id": user_id}, {"$set": {"items": []}}, upsert=True)
+
         flash(f"Commande {oid} créée avec succès.")
         return redirect(url_for("client_orders"))
 
-    # GET
+    # --- GET : affichage du panier ---
     return render_template("client/cart.html", panier=panier)
+
+
+
 
 @app.route("/client/orders")
 @require_login
@@ -499,6 +529,7 @@ def restaurant_dashboard():
     return render_template("restaurant/dashboard.html", orders=commandes)
 
 @app.route("/restaurant/order/<string:order_id>")
+@app.route("/restaurant/order/<string:order_id>")
 @require_login
 @role_required("RESTAURANT")
 def restaurant_order_details(order_id):
@@ -506,9 +537,38 @@ def restaurant_order_details(order_id):
     if not d:
         flash("Commande introuvable.")
         return redirect(url_for("restaurant_dashboard"))
+
     o = norm_order_for_view(d.get("order") or {})
+    lignes = o.get("lignes", [])
     interets = o.get("interets") or []
-    return render_template("restaurant/order_details.html", order=o, lignes=o.get("lignes", []), interets=interets)
+
+    # Sous-total des plats
+    sous_total = 0.0
+    for l in lignes:
+        if "quantite" not in l and "qty" in l:
+            l["quantite"] = l["qty"]
+        if "prix_unitaire" not in l and "pu" in l:
+            l["prix_unitaire"] = l["pu"]
+        try:
+            sous_total += float(l["prix_unitaire"]) * int(l["quantite"])
+        except (ValueError, TypeError):
+            pass
+    sous_total = round(sous_total, 2)
+
+    total_client = round(float(o.get("montant_total_client", sous_total)), 2)
+    sous_total_str = f"{sous_total:.2f}"
+    total_client_str = f"{total_client:.2f}"
+
+    return render_template(
+        "restaurant/order_details.html",
+        order=o,
+        lignes=lignes,
+        interets=interets,
+        sous_total_str=sous_total_str,
+        total_client_str=total_client_str
+    )
+
+
 
 @app.post("/restaurant/order/<string:order_id>/publish")
 @require_login

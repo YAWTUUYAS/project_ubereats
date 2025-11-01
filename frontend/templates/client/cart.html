@@ -53,12 +53,21 @@
     {% endfor %}
     {% set total_sum = total | sum %}
     
-    <div class="cart-summary">
-      <div class="total-line">
-        <span>Total estimé :</span>
-        <strong class="total-price">{{ "%.2f"|format(total_sum) }} €</strong>
+    <div class="cart-summary" id="cart-summary">
+      <div class="summary-line">
+        <span>Sous-total :</span>
+        <strong id="subtotal">{{ "%.2f"|format(total_sum) }} €</strong>
+      </div>
+      <div class="summary-line">
+        <span>Frais de livraison :</span>
+        <strong id="delivery-fee">0.00 €</strong>
+      </div>
+      <div class="summary-line total">
+        <span>Total :</span>
+        <strong id="grand-total">{{ "%.2f"|format(total_sum) }} €</strong>
       </div>
     </div>
+    
   {% else %}
     <div class="empty-state">
       <h3>🛒 Panier vide</h3>
@@ -115,12 +124,14 @@
   <form method="post" class="checkout-form" id="checkout-form">
     <input type="hidden" name="adresse" id="final-address">
     <input type="hidden" name="zone" id="final-zone">
+    <input type="hidden" name="montant_total_client" id="final-total" value="{{ "%.2f"|format(total_sum) }}">
+    
     {% if panier and panier[0].id_restaurant %}
       <input type="hidden" name="id_restaurant" id="final-restaurant" value="{{ panier[0].id_restaurant }}">
     {% else %}
-      <!-- fallback pour debug -->
-      <p class="text-danger">⚠️ Impossible de déterminer l’ID du restaurant (panier vide ou mal formé)</p>
+      <p class="text-danger">⚠️ Impossible de déterminer l'ID du restaurant</p>
     {% endif %}
+    
     <button type="submit" class="btn btn-success btn-large" id="submit-order" disabled>
       ✅ Valider la commande
     </button>
@@ -145,35 +156,35 @@
 const DELIVERY_ZONES = {
   'paris-1': { 
     name: 'Paris 1er', 
-    bounds: [[48.8500, 2.3200], [48.8700, 2.3600]], // Zone élargie
+    bounds: [[48.8500, 2.3200], [48.8700, 2.3600]],
     color: '#3b82f6',
     deliveryFee: 2.50,
     estimatedTime: '25-35 min'
   },
   'paris-2': { 
     name: 'Paris 2ème', 
-    bounds: [[48.8500, 2.3300], [48.8800, 2.3700]], // Zone élargie
+    bounds: [[48.8500, 2.3300], [48.8800, 2.3700]],
     color: '#10b981',
     deliveryFee: 2.50,
     estimatedTime: '20-30 min'
   },
   'paris-3': { 
     name: 'Paris 3ème', 
-    bounds: [[48.8500, 2.3400], [48.8800, 2.3800]], // Zone élargie
+    bounds: [[48.8500, 2.3400], [48.8800, 2.3800]],
     color: '#f59e0b',
     deliveryFee: 3.00,
     estimatedTime: '25-35 min'
   },
   'paris-4': { 
     name: 'Paris 4ème', 
-    bounds: [[48.8400, 2.3300], [48.8700, 2.3700]], // Zone élargie
+    bounds: [[48.8400, 2.3300], [48.8700, 2.3700]],
     color: '#ef4444',
     deliveryFee: 3.00,
     estimatedTime: '30-40 min'
   },
   'paris-centre': { 
     name: 'Paris Centre', 
-    bounds: [[48.8400, 2.3000], [48.8900, 2.4000]], // Zone centrale large
+    bounds: [[48.8400, 2.3000], [48.8900, 2.4000]],
     color: '#8b5cf6',
     deliveryFee: 2.00,
     estimatedTime: '20-30 min'
@@ -188,27 +199,17 @@ let addressSearchTimeout;
 
 // Initialisation de la carte
 function initMap() {
-  // Position par défaut (Paris)
   const defaultPosition = [48.8566, 2.3522];
-  
   map = L.map('map').setView(defaultPosition, 13);
   
-  // Ajouter les tuiles OpenStreetMap
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19
   }).addTo(map);
   
-  // Initialiser l'autocomplétion
   initAutocomplete();
-  
-  // Créer les polygones de zones
   createZonePolygons();
-  
-  // Écouter les clics sur la carte
   map.on('click', handleMapClick);
-  
-  // Écouter les changements de centre de carte
   map.on('moveend', handleMapMoveEnd);
 }
 
@@ -219,7 +220,6 @@ function initAutocomplete() {
   
   addressInput.addEventListener('input', handleAddressInput);
   
-  // Fermer les suggestions en cliquant ailleurs
   document.addEventListener('click', (e) => {
     if (!addressInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
       suggestionsDiv.style.display = 'none';
@@ -232,7 +232,6 @@ function handleAddressInput() {
   const input = document.getElementById('address-input').value;
   const suggestionsDiv = document.getElementById('address-suggestions');
   
-  // Effacer le timeout précédent
   if (addressSearchTimeout) {
     clearTimeout(addressSearchTimeout);
   }
@@ -242,7 +241,6 @@ function handleAddressInput() {
     return;
   }
   
-  // Délai pour éviter trop de requêtes
   addressSearchTimeout = setTimeout(() => {
     searchAddresses(input);
   }, 300);
@@ -264,7 +262,6 @@ async function searchAddresses(query) {
       return;
     }
     
-    // Afficher les suggestions
     suggestionsDiv.innerHTML = results.map(result => `
       <div class="suggestion-item" data-lat="${result.lat}" data-lng="${result.lon}" data-address="${result.display_name}">
         <div class="suggestion-main">${result.display_name}</div>
@@ -274,23 +271,15 @@ async function searchAddresses(query) {
     
     suggestionsDiv.style.display = 'block';
     
-    // Ajouter les événements de clic
     suggestionsDiv.querySelectorAll('.suggestion-item').forEach(item => {
       item.addEventListener('click', () => {
         const lat = parseFloat(item.dataset.lat);
         const lng = parseFloat(item.dataset.lng);
         const address = item.dataset.address;
         
-        // Centrer la carte sur l'adresse sélectionnée
         map.setView([lat, lng], 16);
-        
-        // Placer un marqueur
         placeMarker([lat, lng]);
-        
-        // Mettre à jour les champs
         updateAddressFields(address, [lat, lng]);
-        
-        // Fermer les suggestions
         suggestionsDiv.style.display = 'none';
         document.getElementById('address-input').value = '';
       });
@@ -306,8 +295,6 @@ async function searchAddresses(query) {
 function handleMapClick(e) {
   const location = [e.latlng.lat, e.latlng.lng];
   placeMarker(location);
-  
-  // Géocoder l'emplacement cliqué avec Nominatim (reverse geocoding)
   reverseGeocode(location);
 }
 
@@ -340,7 +327,6 @@ function placeMarker(location) {
     map.removeLayer(currentMarker);
   }
   
-  // Créer une icône personnalisée
   const customIcon = L.divIcon({
     className: 'custom-marker',
     html: '<div class="marker-icon">📍</div>',
@@ -356,7 +342,6 @@ function createZonePolygons() {
   Object.keys(DELIVERY_ZONES).forEach(zoneId => {
     const zone = DELIVERY_ZONES[zoneId];
     
-    // Créer un rectangle pour la zone
     const polygon = L.rectangle(zone.bounds, {
       color: zone.color,
       weight: 2,
@@ -371,7 +356,6 @@ function createZonePolygons() {
     
     zonePolygons.push({ polygon, zoneId, zone });
     
-    // Ajouter un label pour la zone
     const center = [
       (zone.bounds[0][0] + zone.bounds[1][0]) / 2,
       (zone.bounds[0][1] + zone.bounds[1][1]) / 2
@@ -397,23 +381,17 @@ function checkZoneForLocation(location) {
   const lat = location[0];
   const lng = location[1];
   
-  console.log('Vérification zone pour:', lat, lng); // Debug
-  
   for (const zoneId of Object.keys(DELIVERY_ZONES)) {
     const zone = DELIVERY_ZONES[zoneId];
     const bounds = zone.bounds;
     
-    console.log(`Zone ${zoneId}:`, bounds); // Debug
-    
     if (lat >= bounds[0][0] && lat <= bounds[1][0] && 
         lng >= bounds[0][1] && lng <= bounds[1][1]) {
-      console.log(`Zone trouvée: ${zoneId}`); // Debug
       updateZoneInfo(zoneId, zone.name, zone.deliveryFee, zone.estimatedTime);
       return;
     }
   }
   
-  console.log('Aucune zone trouvée'); // Debug
   updateZoneInfo(null, 'Zone non couverte', null, null);
 }
 
@@ -422,22 +400,26 @@ function updateZoneInfo(zoneId, zoneName, deliveryFee, estimatedTime) {
   const zoneInput = document.getElementById('delivery-zone');
   const zoneInfo = document.getElementById('zone-info');
   const submitButton = document.getElementById('submit-order');
-  
+
   zoneInput.value = zoneId || '';
   
   if (zoneId) {
     zoneInfo.innerHTML = `
       <div class="zone-available">
         ✅ ${zoneName} - Livraison disponible<br>
-        <small>Frais: ${deliveryFee}€ | Temps: ${estimatedTime}</small>
-      </div>
-    `;
+        <small>Frais: ${deliveryFee.toFixed(2)}€ | Temps: ${estimatedTime}</small>
+      </div>`;
     zoneInfo.className = 'zone-info zone-available';
     submitButton.disabled = false;
+
+    // Mettre à jour les totaux
+    window.updateZoneTotals(zoneId, deliveryFee);
+
   } else {
     zoneInfo.innerHTML = `<div class="zone-unavailable">❌ ${zoneName} - Livraison non disponible</div>`;
     zoneInfo.className = 'zone-info zone-unavailable';
     submitButton.disabled = true;
+    window.updateZoneTotals(null, 0);
   }
 }
 
@@ -452,11 +434,8 @@ document.getElementById('use-current-location').addEventListener('click', () => 
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition((position) => {
       const location = [position.coords.latitude, position.coords.longitude];
-      
       map.setView(location, 16);
       placeMarker(location);
-      
-      // Géocoder la position
       reverseGeocode(location);
     }, (error) => {
       alert('Impossible d\'obtenir votre position: ' + error.message);
@@ -483,13 +462,10 @@ document.getElementById('toggle-zones').addEventListener('click', () => {
   zonePolygons.forEach(({ polygon, zoneId, zone }) => {
     if (showZones) {
       polygon.addTo(map);
-      
-      // Ajouter le label
       const center = [
         (zone.bounds[0][0] + zone.bounds[1][0]) / 2,
         (zone.bounds[0][1] + zone.bounds[1][1]) / 2
       ];
-      
       const label = L.marker(center, {
         icon: L.divIcon({
           className: 'zone-label',
@@ -498,7 +474,6 @@ document.getElementById('toggle-zones').addEventListener('click', () => {
           iconAnchor: [50, 10]
         })
       }).addTo(map);
-      
       polygon.label = label;
     } else {
       map.removeLayer(polygon);
@@ -512,39 +487,6 @@ document.getElementById('toggle-zones').addEventListener('click', () => {
   button.textContent = showZones ? '🗺️ Masquer les zones' : '🗺️ Afficher les zones';
 });
 
-// Tester les zones (bouton de debug)
-document.getElementById('test-zones').addEventListener('click', () => {
-  const center = map.getCenter();
-  const testLocation = [center.lat, center.lng];
-  
-  console.log('=== TEST DES ZONES ===');
-  console.log('Position testée:', testLocation);
-  console.log('Zones disponibles:', Object.keys(DELIVERY_ZONES));
-  
-  // Tester chaque zone individuellement
-  Object.keys(DELIVERY_ZONES).forEach(zoneId => {
-    const zone = DELIVERY_ZONES[zoneId];
-    const bounds = zone.bounds;
-    const lat = testLocation[0];
-    const lng = testLocation[1];
-    
-    const inZone = lat >= bounds[0][0] && lat <= bounds[1][0] && 
-                   lng >= bounds[0][1] && lng <= bounds[1][1];
-    
-    console.log(`Zone ${zoneId}:`, {
-      bounds: bounds,
-      inZone: inZone,
-      latCheck: `${lat} >= ${bounds[0][0]} && ${lat} <= ${bounds[1][0]} = ${lat >= bounds[0][0] && lat <= bounds[1][0]}`,
-      lngCheck: `${lng} >= ${bounds[0][1]} && ${lng} <= ${bounds[1][1]} = ${lng >= bounds[0][1] && lng <= bounds[1][1]}`
-    });
-  });
-  
-  // Appeler la fonction de vérification
-  checkZoneForLocation(testLocation);
-  
-  alert('Test des zones effectué ! Consultez la console (F12) pour voir les détails.');
-});
-
 // Effacer l'adresse
 document.getElementById('clear-address').addEventListener('click', () => {
   document.getElementById('address-input').value = '';
@@ -553,32 +495,14 @@ document.getElementById('clear-address').addEventListener('click', () => {
   document.getElementById('zone-info').className = 'zone-info';
   document.getElementById('submit-order').disabled = true;
   
-  // Supprimer le marqueur de la carte
   if (currentMarker) {
     map.removeLayer(currentMarker);
     currentMarker = null;
   }
 });
 
-// Soumettre le formulaire
-document.getElementById('checkout-form').addEventListener('submit', (e) => {
-  const address = document.getElementById('address-input').value;
-  const zone = document.getElementById('delivery-zone').value;
-  
-  if (!address || !zone) {
-    e.preventDefault();
-    alert('Veuillez remplir l\'adresse et sélectionner une zone de livraison.');
-    return;
-  }
-  
-  // Mettre à jour les champs cachés
-  document.getElementById('final-address').value = address;
-  document.getElementById('final-zone').value = zone;
-});
-
 // Gestion du panier
 function initCartControls() {
-  // Boutons de quantité
   document.querySelectorAll('.btn-quantity').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const itemName = e.target.dataset.item;
@@ -597,22 +521,18 @@ function initCartControls() {
     });
   });
   
-  // Inputs de quantité
   document.querySelectorAll('.quantity-input').forEach(input => {
     input.addEventListener('change', (e) => {
       const itemName = e.target.dataset.item;
       let qty = parseInt(e.target.value);
-      
       if (qty < 0) qty = 0;
       if (qty > 10) qty = 10;
-      
       e.target.value = qty;
       updateItemTotal(itemName);
       updateCartTotal();
     });
   });
   
-  // Boutons de suppression
   document.querySelectorAll('.btn-remove').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const itemName = e.target.dataset.item;
@@ -622,14 +542,12 @@ function initCartControls() {
     });
   });
   
-  // Bouton vider le panier
   document.getElementById('clear-cart').addEventListener('click', () => {
     if (confirm('Vider complètement le panier ?')) {
       clearCart();
     }
   });
   
-  // Bouton mettre à jour
   document.getElementById('update-cart').addEventListener('click', () => {
     updateCart();
   });
@@ -645,7 +563,6 @@ function updateItemTotal(itemName) {
   const totalElement = document.querySelector(`[data-item="${itemName}"] .item-total-price`);
   totalElement.textContent = `${totalPrice.toFixed(2)} €`;
   
-  // Masquer l'article si quantité = 0
   const cartItem = document.querySelector(`[data-item="${itemName}"]`);
   if (quantity === 0) {
     cartItem.style.opacity = '0.5';
@@ -670,50 +587,42 @@ function updateCartTotal() {
 
 // Supprimer un article du panier
 function removeItemFromCart(itemName) {
-  // Créer un formulaire pour supprimer l'article
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = '{{ url_for("client_remove_line") }}';
   
-  // Ajouter le nom de l'article
   const itemInput = document.createElement('input');
   itemInput.type = 'hidden';
   itemInput.name = 'item_name';
   itemInput.value = itemName;
   form.appendChild(itemInput);
   
-  // Ajouter le token CSRF si nécessaire
   const csrfToken = document.querySelector('input[name="csrf_token"]');
   if (csrfToken) {
     form.appendChild(csrfToken.cloneNode());
   }
   
-  // Soumettre le formulaire
   document.body.appendChild(form);
   form.submit();
 }
 
 // Vider le panier
 function clearCart() {
-  // Créer un formulaire pour vider le panier
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = '{{ url_for("client_cart") }}';
   
-  // Ajouter un champ caché pour indiquer l'action
   const actionInput = document.createElement('input');
   actionInput.type = 'hidden';
   actionInput.name = 'action';
   actionInput.value = 'clear';
   form.appendChild(actionInput);
   
-  // Ajouter le token CSRF si nécessaire
   const csrfToken = document.querySelector('input[name="csrf_token"]');
   if (csrfToken) {
-    form.appendChild(csrfToken.cloneNode());
+    form.appendChild(crfToken.cloneNode());
   }
   
-  // Soumettre le formulaire
   document.body.appendChild(form);
   form.submit();
 }
@@ -736,35 +645,81 @@ function updateCart() {
     }
   });
   
-  // Créer un formulaire pour mettre à jour le panier
   const form = document.createElement('form');
   form.method = 'POST';
   form.action = '{{ url_for("client_cart") }}';
   
-  // Ajouter un champ caché pour indiquer l'action
   const actionInput = document.createElement('input');
   actionInput.type = 'hidden';
   actionInput.name = 'action';
   actionInput.value = 'update';
   form.appendChild(actionInput);
   
-  // Ajouter les données du panier
   const cartInput = document.createElement('input');
   cartInput.type = 'hidden';
   cartInput.name = 'cart_data';
   cartInput.value = JSON.stringify(cartData);
   form.appendChild(cartInput);
   
-  // Ajouter le token CSRF si nécessaire
   const csrfToken = document.querySelector('input[name="csrf_token"]');
   if (csrfToken) {
     form.appendChild(csrfToken.cloneNode());
   }
   
-  // Soumettre le formulaire
   document.body.appendChild(form);
   form.submit();
 }
+
+// === Gestion du total dynamique avec frais de livraison ===
+document.addEventListener("DOMContentLoaded", () => {
+    const subtotalEl = document.getElementById("subtotal");
+    const feeEl = document.getElementById("delivery-fee");
+    const totalEl = document.getElementById("grand-total");
+    const totalHidden = document.getElementById("final-total");
+
+    let currentFee = 0;
+
+    // Fonction pour recalculer les totaux
+    function recalcTotal() {
+        const base = parseFloat(subtotalEl.textContent.replace("€", "").trim()) || 0;
+        const total = base + currentFee;
+
+        feeEl.textContent = currentFee.toFixed(2) + " €";
+        totalEl.textContent = total.toFixed(2) + " €";
+        totalHidden.value = total.toFixed(2);
+    }
+
+    // Fonction appelée quand une zone est détectée
+    window.updateZoneTotals = function(zoneId, fee) {
+        currentFee = fee;
+        recalcTotal();
+    };
+
+    // Par défaut, garde le sous-total sans frais
+    recalcTotal();
+});
+
+// ✅ Forcer la mise à jour finale avant la soumission
+document.getElementById("checkout-form").addEventListener("submit", (e) => {
+    const totalHidden = document.getElementById("final-total");
+    const addressInput = document.getElementById("address-input");
+    const zoneInput = document.getElementById("delivery-zone");
+    const addressHidden = document.getElementById("final-address");
+    const zoneHidden = document.getElementById("final-zone");
+
+    // Validation
+    if (!addressInput.value || !zoneInput.value) {
+        e.preventDefault();
+        alert("Veuillez sélectionner une adresse de livraison valide.");
+        return;
+    }
+
+    // Mettre à jour les champs cachés
+    addressHidden.value = addressInput.value;
+    zoneHidden.value = zoneInput.value;
+
+    console.log("✅ Commande validée - Total:", totalHidden.value + " €");
+});
 
 // Initialiser la carte quand la page est chargée
 document.addEventListener('DOMContentLoaded', () => {

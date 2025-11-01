@@ -10,6 +10,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 import mysql.connector
 from functools import wraps
 from werkzeug.exceptions import abort
+from decimal import Decimal
 
 # -----------------------------
 # Auth decorator
@@ -181,7 +182,7 @@ def client_cart():
             except Exception:
                 updates = []
 
-            # indexer l’ancien panier par nom pour conserver id_plat / id_restaurant
+            # indexer l'ancien panier par nom pour conserver id_plat / id_restaurant
             by_name = {str(it.get("nom")): it for it in panier}
 
             new_panier = []
@@ -215,10 +216,10 @@ def client_cart():
 
         # 2) Sinon, c'est une validation de commande
         adresse = (request.form.get("adresse") or "").strip()
-        zone = (request.form.get("zone") or "").strip()
+        zone = (request.form.get("zone") or request.form.get("final-zone") or "").strip().lower()
         id_restaurant = (request.form.get("id_restaurant") or "").strip()
 
-        # Petits fallback au cas où
+        # Fallback au cas où
         if not id_restaurant and panier:
             id_restaurant = str(panier[0].get("id_restaurant") or "")
         if not adresse:
@@ -234,7 +235,56 @@ def client_cart():
             flash("Votre panier est vide.")
             return redirect(url_for("client_cart"))
 
-        total = sum(float(i["qty"]) * float(i["pu"]) for i in panier)
+        # --- CALCUL ULTRA-SÉCURISÉ du total ---
+        montant_total_front = request.form.get("montant_total_client")
+        
+        print(f"🔍 DEBUG - Valeur reçue de montant_total_client: '{montant_total_front}'")
+        print(f"🔍 DEBUG - Type: {type(montant_total_front)}")
+        
+        # Validation EXTRA robuste
+        montant_total_client = None
+        
+        if montant_total_front and montant_total_front.strip():
+            try:
+                # Nettoyer la valeur
+                valeur_nettoyee = montant_total_front.strip().replace(',', '.')
+                montant_total_client = float(valeur_nettoyee)
+                
+                if montant_total_client <= 0:
+                    raise ValueError("Total doit être positif")
+                    
+                print(f"✅ Total parsé depuis frontend: {montant_total_client} €")
+                
+            except (ValueError, TypeError) as e:
+                print(f"❌ ERREUR parsing: {e}, valeur reçue: '{montant_total_front}'")
+                montant_total_client = None
+
+        # Si le parsing a échoué ou si aucune valeur n'a été reçue
+        if montant_total_client is None:
+            print("🔄 Utilisation du fallback de calcul...")
+            # Fallback sécurisé : calcul manuel
+            total_plats = sum(float(i["qty"]) * float(i["pu"]) for i in panier)
+            zone_fees = {
+                "paris-1": 2.5, "paris-2": 3.0, "paris-3": 3.5, "paris-4": 4.0,
+                "paris-centre": 2.0
+            }
+            frais_zone = zone_fees.get(zone, 2.0)  # frais par défaut
+            montant_total_client = round(total_plats + frais_zone, 2)
+            print(f"⚠️ Fallback calculé: {total_plats} + {frais_zone} = {montant_total_client} €")
+
+        # Validation finale
+        if montant_total_client <= 0:
+            flash("Erreur: Le total de la commande est invalide.")
+            return redirect(url_for("client_cart"))
+
+        # Debug
+        print(f"🎯 COMMANDE FINALE:")
+        print(f"  - Adresse: {adresse}")
+        print(f"  - Zone: {zone}")
+        print(f"  - Restaurant: {id_restaurant}")
+        print(f"  - Total client: {montant_total_client} €")
+        print(f"  - Articles: {len(panier)}")
+
         new_id = f"cmd_{int(time.time()) % 100000000:08d}"
 
         conn, cur = get_cursor()
@@ -253,7 +303,7 @@ def client_cart():
                     zone,
                     adresse,
                     0.00,
-                    total,
+                    montant_total_client,
                 ),
             )
 
@@ -267,16 +317,20 @@ def client_cart():
                 )
 
             conn.commit()
+            print(f"✅ Commande {new_id} créée avec total: {montant_total_client} €")
+        except Exception as e:
+            print(f"❌ Erreur création commande: {str(e)}")
+            flash(f"Erreur lors de la création de la commande: {str(e)}", "error")
+            return redirect(url_for("client_cart"))
         finally:
             conn.close()
 
         session["panier"] = []
-        flash(f"Commande {new_id} créée avec succès.")
+        flash(f"Commande {new_id} créée avec succès pour {montant_total_client} €.")
         return redirect(url_for("client_orders"))
 
     # GET -> affichage
     return render_template("client/cart.html", panier=panier)
-
 
 @app.route("/client/remove_line", methods=["POST"])
 @login_required("CLIENT")
@@ -364,6 +418,7 @@ def restaurant_order_details(order_id):
         if not order:
             flash("Commande introuvable.")
             return redirect(url_for("restaurant_dashboard"))
+
         cur.execute("""
             SELECT p.nom, cl.quantite, cl.prix_unitaire
             FROM commande_ligne cl
@@ -371,12 +426,39 @@ def restaurant_order_details(order_id):
             WHERE cl.id_commande=%s
         """, (order_id,))
         lignes = cur.fetchall()
+
         cur.execute("SELECT * FROM interet WHERE id_commande=%s ORDER BY ts DESC", (order_id,))
         interets = cur.fetchall()
+
+        # --- Calculs côté serveur (fiables) ---
+        # attention: quantite est int, prix_unitaire souvent Decimal -> normaliser en Decimal
+        sous_total = Decimal("0.00")
+        for l in lignes:
+            q = int(l["quantite"])
+            pu = Decimal(str(l["prix_unitaire"]))
+            sous_total += pu * q
+
+        mtc = order.get("montant_total_client")
+        total_client = Decimal(str(mtc)) if mtc is not None else None
+        frais_livraison = (total_client - sous_total) if total_client is not None else None
+
     finally:
         conn.close()
-    return render_template("restaurant/order_details.html", order=order, lignes=lignes, interets=interets)
 
+    # On passe des strings formatées pour éviter les soucis d'affichage/locale
+    def fmt(x):
+        return f"{x:.2f}" if x is not None else None
+
+    return render_template(
+        "restaurant/order_details.html",
+        order=order,
+        lignes=lignes,
+        interets=interets,
+        sous_total_str=fmt(sous_total),
+        frais_livraison_str=fmt(frais_livraison),
+        total_client_str=fmt(total_client),
+    )
+    
 @app.route("/restaurant/order/<string:order_id>/publish", methods=["POST"])
 @login_required("RESTAURANT")
 def restaurant_publish(order_id):

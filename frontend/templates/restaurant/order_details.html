@@ -12,7 +12,7 @@
     <div class="info-grid">
       <div class="info-item">
         <span class="info-label">👤 Client :</span>
-        <span class="info-value">{{ order.id_client }}</span>
+        <span class="info-value">{{ order.nom_client or order.id_client or 'Client inconnu' }}</span>
       </div>
       <div class="info-item">
         <span class="info-label">📍 Zone :</span>
@@ -53,6 +53,21 @@
             <div class="item-price">{{ '%.2f'|format(l.quantite * l.prix_unitaire) }} €</div>
           </div>
         {% endfor %}
+        <hr>
+        <div class="order-summary">
+          <div class="summary-line">
+            <span>Sous-total plats :</span>
+            <strong id="subtotal-plats">{{ sous_total_str }} €</strong>
+          </div>
+          <div class="summary-line">
+            <span>Frais de livraison :</span>
+            <strong id="frais-livraison-calc">0.00 €</strong>
+          </div>
+          <div class="summary-line total">
+            <span>Total client :</span>
+            <strong id="total-client">{{ total_client_str }} €</strong>
+          </div>
+        </div>
       </div>
     {% else %}
       <div class="empty-state">
@@ -62,6 +77,52 @@
   </div>
 </div>
 
+<!-- Script pour calculer les frais de livraison -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function calculerFraisLivraison() {
+        try {
+            const sousTotalText = document.getElementById('subtotal-plats').textContent;
+            const totalClientText = document.getElementById('total-client').textContent;
+            
+            const sousTotal = parseFloat(sousTotalText.replace('€', '').replace(',', '.').trim());
+            const totalClient = parseFloat(totalClientText.replace('€', '').replace(',', '.').trim());
+            
+            if (isNaN(sousTotal) || isNaN(totalClient)) {
+                throw new Error('Impossible de parser les montants');
+            }
+            
+            const fraisLivraison = totalClient - sousTotal;
+            
+            // Validation
+            if (fraisLivraison < 0) {
+                console.warn('⚠️ Frais de livraison négatifs:', fraisLivraison);
+                document.getElementById('frais-livraison-calc').textContent = '0.00 €';
+                document.getElementById('frais-livraison-calc').style.color = 'orange';
+            } else {
+                document.getElementById('frais-livraison-calc').textContent = fraisLivraison.toFixed(2) + ' €';
+                document.getElementById('frais-livraison-calc').style.color = '';
+            }
+            
+            console.log('✅ Frais livraison calculés:', {
+                sousTotal: sousTotal,
+                totalClient: totalClient,
+                fraisLivraison: fraisLivraison
+            });
+            
+        } catch (error) {
+            console.error('❌ Erreur calcul frais livraison:', error);
+            document.getElementById('frais-livraison-calc').textContent = 'Erreur';
+            document.getElementById('frais-livraison-calc').style.color = 'red';
+        }
+    }
+    
+    // Calculer immédiatement
+    calculerFraisLivraison();
+});
+</script>
+
+<!-- Le reste de votre code pour les actions restaurant -->
 <div class="order-actions-section">
   {% if order.statut == 'CREEE' %}
     <div class="action-card">

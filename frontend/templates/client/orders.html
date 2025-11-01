@@ -14,7 +14,7 @@
           <th>ID</th>
           <th>Restaurant</th>
           <th>Zone</th>
-          <th>Total (€)</th>
+          <th>Total</th>
           <th>Statut</th>
           <th>Actions</th>
         </tr>
@@ -22,21 +22,22 @@
       <tbody>
       {% for c in commandes %}
         <tr>
-          <td><strong>{{ c.id_commande }}</strong></td>
+          <td><strong>#{{ c.id_commande }}</strong></td>
           <td>{{ c.id_restaurant }}</td>
           <td><span class="zone-badge">📍 {{ c.zone }}</span></td>
-          <td><strong>{{ '%.2f'|format(c.montant_total_client or 0) }} €</strong></td>
+          <td>
+            <strong>{{ '%.2f'|format(c.montant_total_client) }} €</strong>
+            <div class="text-muted small">
+              (frais livraison inclus)
+            </div>
+          </td>
           <td>
             <span class="status-badge status-{{ c.statut }}">{{ c.statut }}</span>
-            {% if c.statut == 'ANNULEE' and c.motif_annulation %}
-              <div class="text-danger small">📝 {{ c.motif_annulation }}</div>
-            {% endif %}
           </td>
-          
           <td>
             {% if c.statut in ['CREEE', 'ANONCEE'] %}
-              <form method="post" action="{{ url_for('client_cancel', order_id=c.id_commande) }}" class="cancel-form">
-                <input name="motif" placeholder="Motif (optionnel)" class="cancel-input">
+              <form method="post" action="{{ url_for('client_cancel', order_id=c.id_commande) }}">
+                <input name="motif" placeholder="Motif" class="cancel-input">
                 <button type="submit" class="btn btn-sm btn-outline-danger">❌ Annuler</button>
               </form>
             {% else %}

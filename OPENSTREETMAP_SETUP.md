@@ -251,3 +251,5 @@ Le code backend reste identique :
 OpenStreetMap offre une alternative gratuite et performante à Google Maps, parfaitement adaptée pour votre application UberEats POC. Aucune configuration complexe n'est nécessaire, et vous bénéficiez d'une solution entièrement open-source et communautaire.
 
 
+
+
