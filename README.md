@@ -27,22 +27,53 @@ Projet universitaire — **IUT de Villetaneuse, Université Sorbonne Paris Nord*
 
 ---
 
-## 🗂️ Structure du dépôt (suggestion)
+## 🗂️ Structure du dépôt
 
 ```
 .
-├─ app_frontend/            # templates, static, endpoints communs
-├─ poc_mysql/               # code + config MySQL
-├─ poc_redis/               # code + config Redis
-├─ poc_mongo/               # code + config MongoDB
-├─ data/
-│  ├─ restaurants-casvp.json         # export Paris Data (source ouverte)
-│  ├─ restaurants.jsonl               # restaurants adaptés (clé/valeur/doc)
-│  └─ restaurants_menus.jsonl         # menus fictifs (42 × 4 plats)
-├─ scripts/
-│  ├─ prepare_restaurants.py          # conversion CASVP → JSONL
-│  └─ generate_menus.py               # génération de 4 plats/restaurant
-└─ README.md
+├── benchmark.py                 # script de benchmark (latence / débit)
+├── benchmark_results.csv        # résultats générés
+│
+├── frontend/                    # frontend Flask
+│   ├── static/
+│   └── templates/
+│
+├── MONGO_POC/                   # backend MongoDB
+│   ├── bin/
+│   ├── include/
+│   ├── lib/
+│   ├── lib64 -> lib
+│   ├── mdp_mongo.txt           # accès DB (local/atlas)
+│   ├── mongo_poc.py            # backend Flask + MongoDB
+│   ├── requirements.txt
+│   ├── pyvenv.cfg
+│   └── test_connection.py
+│
+├── REDIS_POC/                   # backend Redis
+│   ├── bin/
+│   ├── include/
+│   ├── lib/
+│   ├── lib64 -> lib
+│   ├── out/                     # sets, zsets, exports éventuels
+│   ├── redis_load_from_dir.py   # charge données JSON → Redis
+│   ├── redis_poc.py             # backend Flask + Redis
+│   ├── requirements.txt
+│   ├── pyvenv.cfg
+│   └── sql_to_json_dir.py       # conversion SQL → JSON pour Redis
+│
+├── SQL_POC/                     # backend MySQL
+│   ├── app.py                   # version centrale Flask + MySQL
+│   ├── backend/                 # logique + modèles
+│   ├── config.py                # accès MySQL
+│   ├── orders.jsonl
+│   ├── requirements.txt
+│   ├── pyvenv.cfg
+│   └── sql.txt                  # commandes SQL
+│
+├── OPENSTREETMAP_SETUP.md       # cartographie (Leaflet / OSM)
+├── README.md                    
+└── user stories.txt             # backlog, scénarios d’usage
+
 ```
 
 > **Dataset** utilisé : _Restaurants CASVP — Paris Data_ → https://opendata.paris.fr/explore/dataset/restaurants-casvp/export/  
